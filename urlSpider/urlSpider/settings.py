@@ -57,10 +57,11 @@ LOG_LEVEL = 'ERROR'
 REDIS_HOST = '219.216.65.249'
 REDIS_PORT = 6379
 
-ALL_GOODS_KEY = 'all_goods_sets'
+GOODS_IDS_KEY = 'all_goods_ids'
+
 
 # 评论url
-COMMENT_URL = 'https://club.jd.com/comment/productPageComments.action?productId=%s&score=0&sortType=5&page=0&pageSize=10'
+COMMENT_URL = 'https://club.jd.com/comment/productPageComments.action?productId=%s&score=0&sortType=5&page=0&pageSize=10&categorys=%s'
 
 USER_AGENT_LIST = [
     'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36',

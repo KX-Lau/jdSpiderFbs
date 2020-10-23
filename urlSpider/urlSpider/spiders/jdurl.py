@@ -6,11 +6,17 @@ from scrapy_redis.spiders import RedisSpider
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from ..items import GoodsIdItem
+from urllib.parse import unquote
 
 chrome_options = Options()
 chrome_options.add_argument('--headless')  # 浏览器不提供可视化界面, 即无头模式
 chrome_options.add_argument('--disable-gpu')  # 官方文档建议, 避免bug
 chrome_path = r'../utils/chromedriver.exe'  # 指定浏览器位置
+
+category_dict = {
+    '电脑': {'戴尔': '0-0', '联想': '0-1'},
+    '手机': {'华为': '1-0', '小米': '1-1'},
+}
 
 
 class JdurlSpider(RedisSpider):
@@ -34,26 +40,40 @@ class JdurlSpider(RedisSpider):
         li_list = response.xpath('//*[@id="J_goodsList"]/ul/li')
         print(response, len(li_list))
 
+        # 商品类别品牌, 在商品评论url中携带
+        category = unquote(response.url).split('&')[0][-2:]             # 大类别: 电脑
+        brand = unquote(response.url).split('&')[1].split('_')[1][:2]   # 品牌: 联想
+        categorys = category_dict[category][brand]                      # 0-1
+
         if len(li_list) == 60:
 
             for li in li_list:
 
                 # 爬取到商品id
                 url_goods_id = li.xpath('@data-sku').extract_first()
-                shop = li.xpath('./div/div[5]/span/a/text()')
-                shop = shop.extract_first() if shop else '无'
 
-                # 过滤掉官方,自营和二手店家的商品, 且商品id不在集合中
+                shop = '无'
+                if categorys[0] == '0':             # 电脑
+                    shop = li.xpath('./div/div[5]/span/a/text()')
+                    shop = shop.extract_first() if shop else '无'
+                if categorys[0] == '1':             # 手机
+                    shop = li.xpath('./div/div[7]/span/a/text()')
+                    shop = shop.extract_first() if shop else '无'
+
+                # 过滤掉官方,自营和二手店家的商品, 且商品id不在相应的集合中
                 shop_condition = not ('自营' in shop or '二手' in shop or '官方' in shop)
-                id_condition = not (self.rs.sismember(self.settings['ALL_GOODS_KEY'], url_goods_id))
+                id_condition = not (self.rs.sismember(self.settings['GOODS_IDS_KEY'], url_goods_id))
                 # print(shop_condition, id_condition)
 
                 if shop_condition and id_condition:
                     # print(url_goods_id, shop)
-                    self.rs.sadd(self.settings['ALL_GOODS_KEY'], url_goods_id)
+
+                    # 商品id+类别, 存储到redis中
+                    self.rs.sadd(self.settings['GOODS_IDS_KEY'], url_goods_id)
 
                     item = GoodsIdItem()
                     item['url_goods_id'] = url_goods_id
+                    item['categorys'] = categorys           # 商品评论url携带类别参数
                     yield item
 
                     # id没有被存储, 发请求, 存同类id
@@ -71,7 +91,7 @@ class JdurlSpider(RedisSpider):
 
         # print(response)
 
-        # item = response.meta['item']
+        # categorys = response.meta['categorys']
 
         color_divs = response.xpath('//*[@id="choose-attr-1"]/div[2]/div')
         ver_divs = response.xpath('//*[@id="choose-attr-2"]/div[2]/div')
@@ -79,14 +99,10 @@ class JdurlSpider(RedisSpider):
         # print('div_list--->: ', color_divs)
 
         for div in color_divs:
-
             all_goods_id = div.xpath('@data-sku').extract_first()
             # print(all_goods_id)
 
-            self.rs.sadd(self.settings['ALL_GOODS_KEY'], all_goods_id)
-
-            # item['all_goods_id'] = all_goods_id
-            # yield item
+            self.rs.sadd(self.settings['GOODS_IDS_KEY'], all_goods_id)
 
     def closed(self, spider):
         self.browser.quit()

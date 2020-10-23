@@ -8,3 +8,4 @@ class CommentspiderItem(scrapy.Item):
     score = scrapy.Field()  # 评分
     creat_time = scrapy.Field()  # 评论时间
     content = scrapy.Field()  # 评论内容
+    categorys = scrapy.Field()  # 评论内容

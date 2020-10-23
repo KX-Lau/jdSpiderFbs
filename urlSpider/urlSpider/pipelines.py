@@ -24,6 +24,6 @@ class CommentUrlRedisPipeline(object):
         self.rs = redis.StrictRedis(host=self.settings['REDIS_HOST'], decode_responses=True)
 
     def process_item(self, item, spider):
-        self.rs.sadd('jdComment', format(self.settings['COMMENT_URL'] % item['url_goods_id']))
+        self.rs.lpush('jdComment', format(self.settings['COMMENT_URL'] % (item['url_goods_id'], item['categorys'])))
 
         return item

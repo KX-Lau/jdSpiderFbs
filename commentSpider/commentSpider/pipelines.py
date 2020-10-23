@@ -32,8 +32,9 @@ class CommentRedisPipeline(object):
         self.key = 'comments'
 
     def process_item(self, item, spider):
+
         item_dict = dict(item)
-        self.rs.sadd(self.key, json.dumps(item_dict))
+        self.rs.sadd(self.key, json.dumps(item_dict, ensure_ascii=False))
         return item
 
 
